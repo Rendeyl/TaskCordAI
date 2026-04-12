@@ -13,4 +13,10 @@ client.once("ready", () => {
   console.log(`Logged in as user ${client.user.tag}`);
 });
 
+client.on("messageCreate", (message) => {
+  if (message.content === "ping") {
+    message.reply("pong");
+  }
+});
+
 client.login(process.env.BOT_TOKEN);
