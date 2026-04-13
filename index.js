@@ -24,11 +24,27 @@ client.on("messageCreate", async (message) => {
   if (message.content.startsWith("!task")) {
     const input = message.content.replace("!task", "").trim();
 
-    const task = await parseTask(input);
+    if (!input) {
+      return message.reply("Please Enter a Task");
+    }
 
-    message.reply(
-      `🧠 Task created:\n**${task.title}**\n📅 ${task.dueDate}\n⚡ ${task.priority}`,
-    );
+    try {
+      const task = await parseTask(input);
+
+      if (!task.title || !task.dueDate) {
+        return message.reply("Couldn't understand the task");
+      }
+
+      return message.reply(
+        `🧠 **Task Created**
+📌 **Title:** ${task.title}
+📅 **Due:** ${task.dueDate}
+⚡ **Priority:** ${task.priority || "medium"}`,
+      );
+    } catch (err) {
+      console.log(err);
+      message.reply(`Error: ${err}`);
+    }
   }
 });
 
