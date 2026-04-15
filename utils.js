@@ -11,17 +11,22 @@ async function getNextTaskId(db, subject) {
     NSTP: "NSTP",
   };
 
-  const prefix = prefixMap[subject] || "TSK";
-
+  const key = subject?.trim();
+  const prefix = prefixMap[key] || "TSK";
   const counters = db.collection("counters");
 
   const updated = await counters.findOneAndUpdate(
-    { subject },
+    { subject: key },
     { $inc: { count: 1 } },
     { upsert: true, returnDocument: "after" },
   );
 
-  const number = updated?.value?.count ?? 1;
+  const number = updated?.value?.count;
+
+  if (!number) {
+    const doc = await counters.findOne({ subject: key });
+    return `${prefix}${String(doc?.count || 1).padStart(3, "0")}`;
+  }
 
   return `${prefix}${String(number).padStart(3, "0")}`;
 }

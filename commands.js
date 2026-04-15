@@ -40,24 +40,39 @@ async function showTask(message, db) {
 
   let output = "📋 **Your Tasks:**\n\n";
 
+  const grouped = {};
+
   for (const t of tasks) {
-    const due = new Date(t.dueDate);
-    const today = new Date();
+    if (!grouped[t.subject]) {
+      grouped[t.subject] = [];
+    }
+    grouped[t.subject].push(t);
+  }
 
-    today.setHours(0, 0, 0, 0);
-    due.setHours(0, 0, 0, 0);
+  const sortedSubjects = Object.keys(grouped).sort();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (const subject of sortedSubjects) {
+    output += `📚 **${subject}**\n`;
 
-    const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    for (const t of grouped[subject] || []) {
+      const due = new Date(t.dueDate);
 
-    const daysLeft =
-      diffDays > 0
-        ? `${diffDays} Days Left`
-        : diffDays === 0
-          ? "Due Today"
-          : "Overdue";
+      due.setHours(0, 0, 0, 0);
 
-    output += `📚 **${t.subject}**\n`;
-    output += `${t.taskId} | ${t.title} | ${t.dueDate} | ${daysLeft}\n\n`;
+      const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+
+      const daysLeft =
+        diffDays > 0
+          ? `${diffDays} Days Left`
+          : diffDays === 0
+            ? "Due Today"
+            : "Overdue";
+
+      output += `${t.taskId} | ${t.title} | ${t.dueDate} | ${daysLeft}\n`;
+    }
+
+    output += `\n`;
   }
 
   return message.reply(output);
