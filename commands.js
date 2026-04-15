@@ -15,17 +15,14 @@ async function addTask(message, input, getNextTaskId, db) {
     title: task.title,
     subject: task.subject || "Unassigned",
     dueDate: task.dueDate,
-    priority: task.priority || "medium",
-    status: "pending",
     createdAt: new Date(),
   });
 
   return message.reply(
     `🧠 **Task Saved!**
-        📌 Title: ${task.title}
-        📅 Due: ${task.dueDate}
-        ⚡ Priority: ${task.priority}
-        🆔 Task ID: ${taskId}`,
+    📌 Title: ${task.title}
+    📅 Due: ${task.dueDate}
+    🆔 Task ID: ${taskId}`,
   );
 }
 
@@ -33,7 +30,8 @@ async function addTask(message, input, getNextTaskId, db) {
 async function showTask(message, db) {
   const tasks = await db
     .collection("tasks")
-    .find({ userId: message.author.id, status: "pending" })
+    .find({ userId: message.author.id })
+    .sort({ dueDate: 1 })
     .toArray();
 
   if (!tasks.length) {
@@ -45,6 +43,9 @@ async function showTask(message, db) {
   for (const t of tasks) {
     const due = new Date(t.dueDate);
     const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+    due.setHours(0, 0, 0, 0);
 
     const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
 

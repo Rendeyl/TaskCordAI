@@ -39,6 +39,7 @@ client.on("messageCreate", async (message) => {
     message.reply("RUNNING");
   }
 
+  //!task
   if (message.content.startsWith("!task")) {
     const input = message.content.replace("!task", "").trim();
 
@@ -54,6 +55,7 @@ client.on("messageCreate", async (message) => {
     }
   }
 
+  //!showtask
   if (message.content === "!showtask") {
     try {
       await showTask(message, db);

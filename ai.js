@@ -19,8 +19,7 @@ Return ONLY valid JSON:
 {
   "title": "",
   "dueDate": "YYYY-MM-DD",
-  "subject": "Programming | Networking | Discrete | UTS | FilDis | RPH | ArtApp | PE | NSTP",
-  "priority": "low | medium | high"
+  "subject": "Programming | Networking | Discrete | UTS | FilDis | RPH | ArtApp | PE | NSTP"
 }
 
 Rules:
@@ -57,7 +56,6 @@ Rules:
     return {
       title: task.title || text,
       dueDate: task.dueDate || new Date().toISOString().split("T")[0],
-      priority: task.priority || "medium",
       subject: task.subject || "Unassigned",
     };
   } catch (err) {
@@ -65,8 +63,8 @@ Rules:
 
     return {
       title: text,
-      dueDate: "unknown",
-      priority: "medium",
+      dueDate: new Date().toISOString().split("T")[0],
+      subject: "Unassigned",
     };
   }
 }
