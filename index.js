@@ -4,7 +4,7 @@ const app = express();
 require("dotenv").config();
 
 const connectDB = require("./db");
-const { addTask, showTask } = require("./commands");
+const { addTask, showTask, doneTask, editTask } = require("./commands");
 const { getNextTaskId } = require("./utils");
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -36,7 +36,7 @@ client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   if (message.content === "ping") {
-    message.reply("RUNNING");
+    message.reply("Edit");
   }
 
   //!task
@@ -63,6 +63,27 @@ client.on("messageCreate", async (message) => {
       console.log(err);
       return message.reply("Something Went Wrong Showing all Tasks...");
     }
+  }
+
+  //!done
+  if (message.content.startsWith("!done")) {
+    const taskId = message.content.split(" ")[1];
+
+    if (!taskId) return message.reply("Provide a task ID.");
+
+    return doneTask(message, taskId, db);
+  }
+
+  //!edit
+  if (message.content.startsWith("!edit")) {
+    const [, taskId, ...rest] = message.content.split(" ");
+    const input = rest.join(" ");
+
+    if (!taskId || !input) {
+      return message.reply("Usage: !edit <taskId> <changes>");
+    }
+
+    return editTask(message, taskId, input, db);
   }
 });
 client.login(process.env.BOT_TOKEN);

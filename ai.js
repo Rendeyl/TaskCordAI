@@ -66,4 +66,42 @@ Rules:
   }
 }
 
-module.exports = { parseTask };
+async function parseEditTask(text) {
+  const response = await groq.chat.completions.create({
+    model: "llama-3.1-8b-instant",
+    messages: [
+      {
+        role: "system",
+        content: `
+You edit task updates.
+
+Return ONLY valid JSON:
+
+{
+  "title": "string or null",
+  "dateShiftDays": number or null
+}
+
+Rules:
+- If user says "change title", update title
+- If user says "move due date X days forward/back", convert to number
+  (forward = positive, back = negative)
+- If no change for a field, return null
+- No explanation, ONLY JSON
+        `,
+      },
+      {
+        role: "user",
+        content: text,
+      },
+    ],
+    temperature: 0.2,
+  });
+
+  let output = response.choices?.[0]?.message?.content;
+  output = output.replace(/```json|```/g, "").trim();
+
+  return JSON.parse(output);
+}
+
+module.exports = { parseTask, parseEditTask };

@@ -1,4 +1,4 @@
-const { parseTask } = require("./ai");
+const { parseTask, parseEditTask } = require("./ai");
 const { resolveDate, formatDate } = require("./utils");
 
 // Add Task
@@ -82,4 +82,88 @@ async function showTask(message, db) {
   return message.reply(output);
 }
 
-module.exports = { addTask, showTask };
+// Done/Remove Task
+async function doneTask(message, taskId, db) {
+  const id = taskId.toUpperCase();
+
+  const task = await db.collection("tasks").findOne({
+    userId: message.author.id,
+    taskId: id,
+  });
+
+  if (!task) {
+    return message.reply("Task not found.");
+  }
+
+  await db.collection("tasks").deleteOne({
+    userId: message.author.id,
+    taskId: id,
+  });
+
+  return message.reply(
+    `✅ Task ${task.title} | ${task.taskId} Marked as Done and Removed.`,
+  );
+}
+
+// Edit Task
+async function editTask(message, taskId, input, db) {
+  const id = taskId?.trim().toUpperCase();
+
+  if (!id || !input) {
+    return message.reply("Usage: !edit <taskId> <changes>");
+  }
+
+  const filter = {
+    userId: message.author.id,
+    taskId: id,
+  };
+
+  const task = await db.collection("tasks").findOne(filter);
+
+  if (!task) {
+    return message.reply("❌ Task not found.");
+  }
+
+  let update;
+
+  try {
+    update = await parseEditTask(input);
+  } catch (err) {
+    console.log("AI parse error:", err);
+    return message.reply("❌ Could not understand edit request.");
+  }
+
+  const setData = {};
+
+  if (typeof update?.title === "string") {
+    setData.title = update.title;
+  }
+
+  if (typeof update?.dateShiftDays === "number") {
+    const currentDate = new Date(task.dueDate || Date.now());
+
+    currentDate.setDate(currentDate.getDate() + update.dateShiftDays);
+
+    setData.dueDate = formatDate(currentDate);
+  }
+
+  if (Object.keys(setData).length === 0) {
+    return message.reply("⚠️ No valid changes detected.");
+  }
+
+  await db.collection("tasks").updateOne(filter, {
+    $set: setData,
+  });
+
+  const updatedTask = await db.collection("tasks").findOne(filter);
+
+  if (!updatedTask) {
+    return message.reply("❌ Task updated but could not be reloaded.");
+  }
+
+  return message.reply(
+    `✏️ Updated Task\n📌 ${updatedTask.taskId} | ${updatedTask.title} | ${updatedTask.dueDate}`,
+  );
+}
+
+module.exports = { addTask, showTask, doneTask, editTask };
