@@ -1,17 +1,19 @@
+const chrono = require("chrono-node");
+
 async function getNextTaskId(db, subject) {
+  const key = subject?.trim().toUpperCase();
   const prefixMap = {
-    Programming: "PRO",
-    Networking: "NET",
-    Discrete: "DIS",
+    PROGRAMMING: "PRO",
+    NETWORKING: "NET",
+    DISCRETE: "DIS",
     UTS: "UTS",
-    FilDis: "FIL",
+    FILDIS: "FIL",
     RPH: "RPH",
-    ArtApp: "ART",
+    ARTAPP: "ART",
     PE: "PE",
     NSTP: "NSTP",
   };
 
-  const key = subject?.trim();
   const prefix = prefixMap[key] || "TSK";
   const counters = db.collection("counters");
 
@@ -31,4 +33,55 @@ async function getNextTaskId(db, subject) {
   return `${prefix}${String(number).padStart(3, "0")}`;
 }
 
-module.exports = { getNextTaskId };
+function resolveDate(dateText) {
+  const text = dateText.toLowerCase();
+
+  const today = new Date();
+  const days = [
+    "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ];
+
+  if (text.includes("next week")) {
+    const match = days.find((d) => text.includes(d));
+
+    if (match) {
+      const targetDay = days.indexOf(match);
+
+      const result = new Date(today);
+
+      const currentDay = result.getDay();
+      const daysUntilNextMonday = (7 - currentDay + 1) % 7 || 7;
+
+      result.setDate(result.getDate() + daysUntilNextMonday);
+
+      const diff = targetDay - result.getDay();
+      result.setDate(result.getDate() + diff);
+
+      return result;
+    }
+  }
+
+  const parsed = chrono.parseDate(dateText, today, {
+    forwardDate: true,
+  });
+
+  if (!parsed) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+
+  return parsed;
+}
+
+function formatDate(date) {
+  return date.toISOString().split("T")[0];
+}
+
+module.exports = { getNextTaskId, resolveDate, formatDate };

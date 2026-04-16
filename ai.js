@@ -18,19 +18,16 @@ Return ONLY valid JSON:
 
 {
   "title": "",
-  "dueDate": "YYYY-MM-DD",
+  "dateText": "",
   "subject": "Programming | Networking | Discrete | UTS | FilDis | RPH | ArtApp | PE | NSTP"
 }
 
 Rules:
-- Today is ${today}
-- Convert relative dates like "tomorrow", "next Friday"
-- If user gives only a day number (e.g. "15"), assume current month and year
-- If that date already passed, use next month
-- dueDate must be YYYY-MM-DD
+- DO NOT convert the date into a real date
+- Keep the original date phrase EXACTLY (e.g. "next week Tuesday", "tomorrow", "April 20")
+- If no date is mentioned, use "tomorrow"
 - If subject is not mentioned, guess based on context
 - Default subject = "Unassigned"
-- If user does NOT specify a date, assume tomorrow
 - No explanation, ONLY JSON
 `,
       },
@@ -55,7 +52,7 @@ Rules:
 
     return {
       title: task.title || text,
-      dueDate: task.dueDate || new Date().toISOString().split("T")[0],
+      dateText: task.dateText || "Tommorow",
       subject: task.subject || "Unassigned",
     };
   } catch (err) {

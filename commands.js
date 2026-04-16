@@ -1,10 +1,14 @@
 const { parseTask } = require("./ai");
+const { resolveDate, formatDate } = require("./utils");
 
 // Add Task
 async function addTask(message, input, getNextTaskId, db) {
   const task = await parseTask(input);
 
-  if (!task.title || !task.dueDate) {
+  const realDate = resolveDate(task.dateText);
+  const dueDate = formatDate(realDate);
+
+  if (!task.title) {
     return message.reply("Couldn't understand the task");
   }
 
@@ -14,14 +18,14 @@ async function addTask(message, input, getNextTaskId, db) {
     taskId,
     title: task.title,
     subject: task.subject || "Unassigned",
-    dueDate: task.dueDate,
+    dueDate: dueDate,
     createdAt: new Date(),
   });
 
   return message.reply(
     `🧠 **Task Saved!**
     📌 Title: ${task.title}
-    📅 Due: ${task.dueDate}
+    📅 Due: ${dueDate} (${task.dateText})
     🆔 Task ID: ${taskId}`,
   );
 }
@@ -57,10 +61,10 @@ async function showTask(message, db) {
 
     for (const t of grouped[subject] || []) {
       const due = new Date(t.dueDate);
-
       due.setHours(0, 0, 0, 0);
 
-      const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const diffDays = Math.round((due - today) / msPerDay);
 
       const daysLeft =
         diffDays > 0
