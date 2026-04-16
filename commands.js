@@ -20,6 +20,7 @@ async function addTask(message, input, getNextTaskId, db) {
     subject: task.subject || "Unassigned",
     dueDate: dueDate,
     createdAt: new Date(),
+    lastNotifiedAt: null,
   });
 
   return message.reply(

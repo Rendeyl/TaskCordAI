@@ -6,6 +6,7 @@ require("dotenv").config();
 const connectDB = require("./db");
 const { addTask, showTask, doneTask, editTask } = require("./commands");
 const { getNextTaskId } = require("./utils");
+const { runNotifier } = require("./notifier");
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -29,6 +30,14 @@ let db;
 
 client.once("ready", async () => {
   db = await connectDB();
+
+  setInterval(
+    () => {
+      runNotifier(db, client);
+    },
+    1000 * 60 * 120,
+  ); //2 hours
+
   console.log(`Logged in as user ${client.user.tag}`);
 });
 
