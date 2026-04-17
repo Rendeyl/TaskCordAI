@@ -81,7 +81,9 @@ function resolveDate(dateText) {
 }
 
 function formatDate(date) {
-  return date.toISOString().split("T")[0];
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "Invalid date";
+  return d.toISOString().split("T")[0];
 }
 
 module.exports = { getNextTaskId, resolveDate, formatDate };

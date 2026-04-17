@@ -33,10 +33,12 @@ client.once("ready", async () => {
 
   setInterval(
     () => {
+      console.log("INTERVAL PASSED");
       runNotifier(db, client);
     },
-    1000 * 60 * 120,
-  ); //2 hours
+    //1000 * 10, //10s for testing
+    1000 * 60 * 120, //2 hours
+  );
 
   console.log(`Logged in as user ${client.user.tag}`);
 });
@@ -45,7 +47,7 @@ client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   if (message.content === "ping") {
-    message.reply("Edit");
+    message.reply("AAAAAAAAA");
   }
 
   //!task

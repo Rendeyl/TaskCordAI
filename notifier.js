@@ -10,12 +10,14 @@ function getDaysLeft(dueDate) {
 }
 
 function getPriority(daysLeft) {
-  if (daysLeft <= 4) return "high"; // 0–4
-  if (daysLeft <= 7) return "medium"; // 5–7
-  return "low"; // 8+
+  if (daysLeft <= 0) return "overdue";
+  if (daysLeft <= 4) return "high";
+  if (daysLeft <= 7) return "medium";
+  return "low";
 }
 
 function getCooldown(priority) {
+  if (priority === "overdue") return 1000 * 60 * 30;
   if (priority === "high") return 1000 * 60 * 60;
   if (priority === "medium") return 1000 * 60 * 60 * 3;
   return 1000 * 60 * 60 * 8;
@@ -29,6 +31,7 @@ function isCooldownOver(task, cooldownMs) {
 }
 
 function randomChance(priority) {
+  if (priority === "overdue") return true;
   if (priority === "high") return true;
   if (priority === "medium") return Math.random() < 0.6;
   return Math.random() < 0.2;
@@ -48,6 +51,8 @@ async function runNotifier(db, client) {
     if (!isCooldownOver(task, cooldown)) continue;
     if (!randomChance(priority)) continue;
 
+    //console.log("NOTIFYING:", task.title, priority);
+
     notifyList.push({ task, daysLeft, priority });
 
     await db
@@ -59,24 +64,54 @@ async function runNotifier(db, client) {
 
   const channel = await client.channels.fetch(process.env.NOTIFY_CHANNEL_ID);
 
-  let msg = `📌 Task Reminder\n\n`;
+  const groups = {
+    OVERDUE: [],
+    HIGH: [],
+    MEDIUM: [],
+    LOW: [],
+  };
 
   for (const item of notifyList) {
     const { task, daysLeft } = item;
 
-    const label =
-      daysLeft <= 0
-        ? "🔴 OVERDUE"
-        : daysLeft <= 1
-          ? "🔴 DUE SOON"
-          : daysLeft <= 4
-            ? "🟠 MEDIUM"
-            : "🟡 UPCOMING";
-
-    msg += `- [${label}] ${task.subject}: ${task.title} (${task.dueDate}) — ${daysLeft} days left\n`;
+    if (daysLeft <= 0) {
+      groups.OVERDUE.push({ task, daysLeft });
+    } else if (daysLeft <= 4) {
+      groups.HIGH.push({ task, daysLeft });
+    } else if (daysLeft <= 7) {
+      groups.MEDIUM.push({ task, daysLeft });
+    } else {
+      groups.LOW.push({ task, daysLeft });
+    }
   }
 
-  msg += `\n━━━━━━━━━━━━━━━━━━━━━━`;
+  let msg = `📌 Task Reminder\n\n`;
+
+  function appendGroup(title, items) {
+    if (!items.length) return;
+
+    msg += `**${title}**\n`;
+
+    for (const { task, daysLeft } of items) {
+      const daysText =
+        daysLeft < 0
+          ? `${Math.abs(daysLeft)} days overdue`
+          : `${daysLeft} days left`;
+
+      msg += `- ${task.subject}: ${task.title} (${formatDate(
+        task.dueDate,
+      )}) — ${daysText}\n`;
+    }
+
+    msg += `\n`;
+  }
+
+  appendGroup("🔴 OVERDUE", groups.OVERDUE);
+  appendGroup("🔴 HIGH", groups.HIGH);
+  appendGroup("🟠 MEDIUM", groups.MEDIUM);
+  appendGroup("🟡 LOW", groups.LOW);
+
+  msg += `━━━━━━━━━━━━━━━━━━━━━━`;
 
   await channel.send(msg);
 }
