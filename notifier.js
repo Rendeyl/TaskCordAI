@@ -51,7 +51,7 @@ async function runNotifier(db, client) {
     if (!isCooldownOver(task, cooldown)) continue;
     if (!randomChance(priority)) continue;
 
-    //console.log("NOTIFYING:", task.title, priority);
+    //console.log("Debugger-NOTIFYING:", task.title, priority);
 
     notifyList.push({ task, daysLeft, priority });
 
