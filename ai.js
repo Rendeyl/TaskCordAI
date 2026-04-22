@@ -12,23 +12,73 @@ async function parseTask(text) {
       {
         role: "system",
         content: `
-You convert user messages into structured JSON tasks.
+You are a strict task parser.
+
+Your job:
+Extract structured task data from messy user text.
 
 Return ONLY valid JSON:
-
 {
-  "title": "",
-  "dateText": "",
-  "subject": "Programming | Networking | Discrete | UTS | FilDis | RPH | ArtApp | PE | NSTP"
+  "title": string,
+  "dateText": string,
+  "subject": string
 }
 
-Rules:
-- DO NOT convert the date into a real date
-- Keep the original date phrase EXACTLY (e.g. "next week Tuesday", "tomorrow", "April 20")
-- If no date is mentioned, use "tomorrow"
-- If subject is not mentioned, guess based on context
-- Default subject = "Unassigned"
-- No explanation, ONLY JSON
+--------------------
+RULES (VERY IMPORTANT)
+--------------------
+
+1. TITLE RULE:
+- Remove subject names from the title
+- Remove date phrases from the title
+- Title should be ONLY the task action/content
+
+Bad:
+"RPH collage activity in 8 days"
+Good:
+"collage activity"
+
+Bad:
+"Programming assignment tomorrow"
+Good:
+"assignment"
+
+--------------------
+
+2. SUBJECT RULE:
+Valid subjects:
+Programming, Networking, Discrete, UTS, FilDis, RPH, ArtApp, PE, NSTP
+
+- Match even if misspelled:
+  "progamming" → Programming
+  "rphh" → RPH
+  "fildiss" → FilDis
+
+- If unsure, return "Unassigned"
+
+- NEVER include subject in title
+
+--------------------
+
+3. DATE RULE:
+- Extract natural time expressions:
+  "tomorrow", "in 8 days", "next week", "April 20"
+- If no date exists → "tomorrow"
+- DO NOT convert into real date
+
+--------------------
+
+4. CLEANING RULE:
+- Fix obvious typos in meaning (collage → college ONLY if context suggests school)
+- Ignore grammar mistakes
+- Focus on intent, not spelling
+
+--------------------
+
+5. OUTPUT RULE:
+- Return ONLY JSON
+- No explanations
+- No markdown
 `,
       },
       {
@@ -73,22 +123,92 @@ async function parseEditTask(text) {
       {
         role: "system",
         content: `
-You edit task updates.
+You are an intelligent TASK EDITOR.
+
+Your job:
+Given a user edit instruction, modify an existing task conceptually and output ONLY the changes.
+
+You are NOT a form parser.
+You are a task rewriter that extracts differences.
 
 Return ONLY valid JSON:
-
 {
-  "title": "string or null",
+  "title": string or null,
+  "dateText": string or null,
   "dateShiftDays": number or null
 }
 
-Rules:
-- If user says "change title", update title
-- If user says "move due date X days forward/back", convert to number
-  (forward = positive, back = negative)
-- If no change for a field, return null
-- No explanation, ONLY JSON
-        `,
+------------------------------------
+CORE BEHAVIOR (VERY IMPORTANT)
+------------------------------------
+
+You MUST imagine:
+- the user is editing an existing task
+- the instruction may be short, vague, or incomplete
+- your job is to infer intent
+
+------------------------------------
+TITLE RULE (CRITICAL FIX)
+------------------------------------
+
+If user mentions ANY of these:
+- "change title"
+- "rename"
+- OR gives a new phrase after task id (VERY IMPORTANT)
+- OR simply says a new phrase (like "Final Exam")
+
+→ THEN treat it as NEW TITLE
+
+Examples:
+
+"!edit net002 Final Exam"
+→ { "title": "Final Exam" }
+
+"!edit net002 change to Final Exam"
+→ { "title": "Final Exam" }
+
+"!edit net002 make it quiz instead"
+→ { "title": "quiz" }
+
+------------------------------------
+DATE RULE
+------------------------------------
+
+A) If user gives a new date:
+- "May 1", "Friday", "tomorrow"
+→ set "dateText"
+
+B) If user gives movement:
+- "move 3 days later"
+→ dateShiftDays: 3
+
+C) If no date change → null
+
+------------------------------------
+FLEXIBILITY RULE (IMPORTANT)
+------------------------------------
+
+- Treat short messages AFTER taskId as intent
+- Even if no keywords exist
+- Fix typos automatically
+- Assume intent, not grammar
+
+Examples:
+
+"!edit net002 Final Exam"
+→ treat as title replacement
+
+"!edit net002 project due Friday"
+→ title: "project", dateText: "Friday"
+
+------------------------------------
+OUTPUT RULE
+------------------------------------
+
+- ONLY JSON
+- NO explanations
+- NO markdown
+`,
       },
       {
         role: "user",
