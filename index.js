@@ -18,6 +18,23 @@ const client = new discord.Client({
   ],
 });
 
+const MIN = 2 * 60 * 60 * 1000; // 2 hours
+const MAX = 5 * 60 * 60 * 1000; // 5 hours
+
+function scheduleNotifier() {
+  const delay = Math.floor(Math.random() * (MAX - MIN + 1)) + MIN;
+
+  setTimeout(async () => {
+    try {
+      await runNotifier(db, client);
+    } catch (err) {
+      console.error("Notifier error:", err);
+    }
+
+    scheduleNotifier();
+  }, delay);
+}
+
 app.get("/", (req, res) => {
   res.send("TaskCordAI is running");
 });
@@ -31,14 +48,7 @@ let db;
 client.once("ready", async () => {
   db = await connectDB();
 
-  setInterval(
-    () => {
-      console.log("INTERVAL PASSED");
-      runNotifier(db, client);
-    },
-    //1000 * 10, //10s for testing
-    1000 * 60 * 120, //2 hours
-  );
+  scheduleNotifier();
 
   console.log(`Logged in as user ${client.user.tag}`);
 });
