@@ -43,6 +43,16 @@ async function runNotifier(db, client) {
 
   const notifyList = [];
 
+  const users = await db.collection("users").find({}).toArray();
+
+  const userChannelMap = new Map();
+
+  for (const u of users) {
+    if (u.userId && u.notifyChannelId) {
+      userChannelMap.set(u.userId, u.notifyChannelId);
+    }
+  }
+
   for (const task of tasks) {
     const daysLeft = getDaysLeft(task.dueDate);
     const priority = getPriority(daysLeft);
@@ -50,8 +60,6 @@ async function runNotifier(db, client) {
 
     if (!isCooldownOver(task, cooldown)) continue;
     if (!randomChance(priority)) continue;
-
-    //console.log("Debugger-NOTIFYING:", task.title, priority);
 
     notifyList.push({ task, daysLeft, priority });
 
@@ -62,58 +70,79 @@ async function runNotifier(db, client) {
 
   if (!notifyList.length) return;
 
-  const channel = await client.channels.fetch(process.env.NOTIFY_CHANNEL_ID);
+  const usersGrouped = new Map();
 
-  const groups = {
-    OVERDUE: [],
-    HIGH: [],
-    MEDIUM: [],
-    LOW: [],
-  };
-
+  // group tasks by user first
   for (const item of notifyList) {
-    const { task, daysLeft } = item;
+    const userId = item.task.userId;
 
-    if (daysLeft <= 0) {
-      groups.OVERDUE.push({ task, daysLeft });
-    } else if (daysLeft <= 4) {
-      groups.HIGH.push({ task, daysLeft });
-    } else if (daysLeft <= 7) {
-      groups.MEDIUM.push({ task, daysLeft });
-    } else {
-      groups.LOW.push({ task, daysLeft });
-    }
-  }
-
-  let msg = `📌 Task Reminder\n\n`;
-
-  function appendGroup(title, items) {
-    if (!items.length) return;
-
-    msg += `**${title}**\n`;
-
-    for (const { task, daysLeft } of items) {
-      const daysText =
-        daysLeft < 0
-          ? `${Math.abs(daysLeft)} days overdue`
-          : `${daysLeft} days left`;
-
-      msg += `- ${task.subject}: ${task.title} (${formatDate(
-        task.dueDate,
-      )}) — ${daysText}\n`;
+    if (!usersGrouped.has(userId)) {
+      usersGrouped.set(userId, []);
     }
 
-    msg += `\n`;
+    usersGrouped.get(userId).push(item);
   }
 
-  appendGroup("🔴 OVERDUE", groups.OVERDUE);
-  appendGroup("🔴 HIGH", groups.HIGH);
-  appendGroup("🟠 MEDIUM", groups.MEDIUM);
-  appendGroup("🟡 LOW", groups.LOW);
+  // send per user
+  for (const [userId, items] of usersGrouped) {
+    const channelId = userChannelMap.get(userId);
+    if (!channelId) continue;
 
-  msg += `━━━━━━━━━━━━━━━━━━━━━━`;
+    const channel = await client.channels.fetch(channelId).catch(() => null);
+    if (!channel) continue;
 
-  await channel.send(msg);
+    const groups = {
+      OVERDUE: [],
+      HIGH: [],
+      MEDIUM: [],
+      LOW: [],
+    };
+
+    for (const item of items) {
+      const { task, daysLeft } = item;
+
+      const bucket =
+        daysLeft <= 0
+          ? "OVERDUE"
+          : daysLeft <= 4
+            ? "HIGH"
+            : daysLeft <= 7
+              ? "MEDIUM"
+              : "LOW";
+
+      groups[bucket].push({ task, daysLeft });
+    }
+
+    let msg = `📌 Task Reminder\n\n`;
+
+    function appendGroup(title, items) {
+      if (!items.length) return;
+
+      msg += `**${title}**\n`;
+
+      for (const { task, daysLeft } of items) {
+        const daysText =
+          daysLeft < 0
+            ? `${Math.abs(daysLeft)} days overdue`
+            : `${daysLeft} days left`;
+
+        msg += `- ${task.subject}: ${task.title} (${formatDate(
+          task.dueDate,
+        )}) — ${daysText}\n`;
+      }
+
+      msg += `\n`;
+    }
+
+    appendGroup("🔴 OVERDUE", groups.OVERDUE);
+    appendGroup("🔴 HIGH", groups.HIGH);
+    appendGroup("🟠 MEDIUM", groups.MEDIUM);
+    appendGroup("🟡 LOW", groups.LOW);
+
+    msg += `━━━━━━━━━━━━━━━━━━━━━━`;
+
+    await channel.send(msg);
+  }
 }
 
 module.exports = { runNotifier };

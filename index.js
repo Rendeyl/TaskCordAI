@@ -56,8 +56,8 @@ client.once("ready", async () => {
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  if (message.content === "ping") {
-    message.reply("CCC");
+  if (message.content === "!ping") {
+    message.reply("RUNNING!");
   }
 
   //!task
@@ -105,6 +105,30 @@ client.on("messageCreate", async (message) => {
     }
 
     return editTask(message, taskId, input, db);
+  }
+
+  // Changing Channel
+  if (message.content.startsWith("!setnotify")) {
+    const channel = message.mentions.channels.first();
+
+    if (!channel) {
+      return message.reply("Please mention a channel like #channel-name");
+    }
+
+    console.log("Saving user:", message.author.id);
+    console.log("Channel:", channel.id);
+
+    await db.collection("users").updateOne(
+      { userId: message.author.id },
+      {
+        $set: {
+          notifyChannelId: channel.id,
+        },
+      },
+      { upsert: true },
+    );
+
+    return message.reply(`✅ Notification channel set to ${channel.name}`);
   }
 });
 client.login(process.env.BOT_TOKEN);
