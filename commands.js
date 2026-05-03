@@ -72,7 +72,7 @@ async function showTask(message, db) {
           ? `${diffDays} Days Left`
           : diffDays === 0
             ? "Due Today"
-            : "Overdue";
+            : `${Math.abs(diffDays)} Days Overdue`;
 
       output += `${t.taskId} | ${t.title} | ${t.dueDate} | ${daysLeft}\n`;
     }
@@ -140,11 +140,12 @@ async function editTask(message, taskId, input, db) {
     setData.title = update.title;
   }
 
-  if (typeof update?.dateShiftDays === "number") {
+  if (typeof update?.dateText === "string") {
+    const realDate = resolveDate(update.dateText);
+    setData.dueDate = formatDate(realDate);
+  } else if (typeof update?.dateShiftDays === "number") {
     const currentDate = new Date(task.dueDate || Date.now());
-
     currentDate.setDate(currentDate.getDate() + update.dateShiftDays);
-
     setData.dueDate = formatDate(currentDate);
   }
 

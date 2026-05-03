@@ -118,6 +118,9 @@ async function runNotifier(db, client) {
     function appendGroup(title, items) {
       if (!items.length) return;
 
+      // Bold Header
+      //msg += `**${title}**\n`;
+
       msg += `**${title}**\n`;
 
       for (const { task, daysLeft } of items) {

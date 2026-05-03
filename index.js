@@ -56,8 +56,9 @@ client.once("ready", async () => {
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
-  if (message.content === "!ping") {
-    message.reply("RUNNING!");
+  if (message.content === "!status") {
+    //message.reply("In-Developing/Updating");
+    message.reply("RUNNING!!!");
   }
 
   //!task
