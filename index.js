@@ -57,8 +57,8 @@ client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   if (message.content === "!status") {
-    //message.reply("In-Developing/Updating");
-    message.reply("RUNNING!!!");
+    message.reply("In-Developing/Updating");
+    //message.reply("RUNNING!!!");
   }
 
   //!task

@@ -12,7 +12,7 @@ async function addTask(message, input, getNextTaskId, db) {
     return message.reply("Couldn't understand the task");
   }
 
-  const taskId = await getNextTaskId(db, task.subject);
+  const taskId = await getNextTaskId(db, task.subject, message.author.id);
   await db.collection("tasks").insertOne({
     userId: message.author.id,
     taskId,
@@ -25,9 +25,9 @@ async function addTask(message, input, getNextTaskId, db) {
 
   return message.reply(
     `🧠 **Task Saved!**
-    📌 Title: ${task.title}
-    📅 Due: ${dueDate} (${task.dateText})
-    🆔 Task ID: ${taskId}`,
+  📌 Title: ${task.title}
+  📅 Due: ${dueDate} (${task.dateText})
+  🆔 Task ID: ${taskId}`,
   );
 }
 

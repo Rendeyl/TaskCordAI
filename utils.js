@@ -1,6 +1,6 @@
 const chrono = require("chrono-node");
 
-async function getNextTaskId(db, subject) {
+async function getNextTaskId(db, subject, userId) {
   const key = subject?.trim().toUpperCase();
   const prefixMap = {
     PROGRAMMING: "PRO",
@@ -18,7 +18,7 @@ async function getNextTaskId(db, subject) {
   const counters = db.collection("counters");
 
   const updated = await counters.findOneAndUpdate(
-    { subject: key },
+    { subject: key, userId },
     { $inc: { count: 1 } },
     { upsert: true, returnDocument: "after" },
   );
@@ -26,7 +26,7 @@ async function getNextTaskId(db, subject) {
   const number = updated?.value?.count;
 
   if (!number) {
-    const doc = await counters.findOne({ subject: key });
+    const doc = await counters.findOne({ subject: key, userId });
     return `${prefix}${String(doc?.count || 1).padStart(3, "0")}`;
   }
 
