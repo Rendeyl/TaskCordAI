@@ -1,97 +1,56 @@
-## 🤖 TaskCordAI
+# TaskCordAI
 
-TaskCordAI is a full-stack productivity system built around Discord that helps manage academic tasks, deadlines, and reminders in one centralized workflow.
+TaskCordAI is a full-stack productivity system that integrates with Discord to help track and manage academic tasks, deadlines, and reminders. 
 
-It combines a Discord bot, backend API, database, and AI-powered features to automate task organization and reduce manual tracking.
-
----
-
-## 🧠 Overview
-
-TaskCordAI was designed to solve common productivity problems such as:
-- Missing deadlines  
-- Forgetting tasks  
-- Scattered school information  
-- Manual tracking of updates  
-
-By using Discord as the main interface, users can manage tasks directly where they already communicate.
+By leveraging a Discord bot as the primary interface, the system connects a Node.js backend, MongoDB database, and LLM processing to automate task tracking directly inside the workspace students already use daily.
 
 ---
 
-## 🚀 Features
+## The Problem It Solves
 
-### 📥 Task Management
-- Add tasks via Discord commands or messages  
-- View all tasks in a dedicated channel  
-- Update and manage task status  
-
-### ⏰ Reminders & Notifications
-- Automatic reminders for upcoming deadlines  
-- Alerts for overdue tasks  
-- Daily task summaries  
-
-### 🧠 AI-Powered Processing
-- Convert natural language into structured tasks  
-- Automatically assign priority levels  
-- Summarize long messages or inputs  
+Manually tracking academic workloads across different platforms often leads to missed deadlines, forgotten assignments, and scattered information. TaskCordAI centralizes this workflow into Discord, removing the friction of context-switching between chat apps and traditional planners.
 
 ---
 
-## 🧱 System Architecture
+## Core Features
 
-### 1. Discord Bot
-- Built using `discord.js`  
-- Handles user interaction  
-- Sends and receives messages  
-- Acts as the UI layer  
+### Task Management
+* **Flexible Input:** Create tasks via standard Discord commands or unstructured chat messages.
+* **Centralized Tracking:** View, update, and close out tasks directly from a dedicated channel.
 
-### 2. Backend API
-- Node.js + Express  
-- Handles business logic and API requests  
-- Processes task creation, updates, and deletion  
-- Integrates AI and scheduling logic  
+### Automated Reminders
+* **Deadline Alerts:** Automatically pings users for upcoming or overdue deadlines.
+* **Daily Digests:** Sends a structured daily summary of pending items.
 
-### 3. Database
-- MongoDB  
-- Stores tasks and user data  
-- Acts as the single source of truth  
-
-### 4. Scheduler System
-- Cron jobs / background workers  
-- Monitors deadlines and triggers reminders  
-
-### 5. AI Layer
-- Processes natural language inputs  
-- Enhances task creation and prioritization  
+### AI-Assisted Processing
+* **Natural Language Parsing:** Converts messy chat inputs into clean, structured database entries.
+* **Smart Triaging:** Automatically assigns priority levels and extracts relevant context from long descriptions.
 
 ---
 
-## 🔁 Data Flow
+## System Architecture
 
-1. User sends a message or command in Discord  
-2. Discord bot forwards data to backend  
-3. Backend processes and stores it in MongoDB  
-4. Scheduler checks deadlines periodically  
-5. Bot sends reminders and updates to Discord  
-
----
-
-## 📢 Discord Channel Structure
-
-- **#commands** → Input commands(!task, !showalltask, !edit, !done)
-- **#notifications** → Receive reminders and alerts  
+* **Discord Bot (`discord.js`):** Serves as the application's user interface, handling all user interactions, commands, and message rendering.
+* **Backend API (Node.js & Express):** Manages the core business logic, handles CRUD operations, and coordinates API requests between Discord and the AI layer.
+* **Database (MongoDB):** Acts as the persistent data store for user profiles, task states, and history logs.
+* **Scheduler System (Cron Jobs):** Runs background workers to periodically monitor upcoming deadlines and trigger time-sensitive alerts.
 
 ---
 
-## 📄 Example Task Schema
+## System Workflow
 
-```json
-{
-  "userId": "discordUserId",
-  "title": "Math quiz",
-  "description": "",
-  "dueDate": "2026-04-18",
-  "priority": "high",
-  "status": "pending",
-  "createdAt": "timestamp"
-}
+1. **Input:** A user types a command or standard message in a Discord channel.
+2. **Ingestion:** The Discord bot captures the event and routes the payload to the Express backend.
+3. **Processing:** The backend sanitizes the data (passing it through the AI layer if it's natural language) and commits the structured record to MongoDB.
+4. **Automation:** The cron scheduler continuously scans the database for approaching `dueDate` timestamps.
+5. **Output:** When a threshold is met, the backend signals the bot to dispatch an alert back to the appropriate Discord channel.
+
+---
+
+## Discord Setup
+
+The bot expects the following channel layout to separate inputs from automated outputs:
+* `#commands` – Where users interact with the bot (`!task`, `!showalltask`, `!edit`, `!done`).
+* `#notifications` – Where the bot posts automated reminders, summaries, and deadline alerts.
+
+---
