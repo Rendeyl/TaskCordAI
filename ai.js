@@ -5,108 +5,69 @@ const groq = new Groq({
 });
 
 async function parseTask(text) {
-  const today = new Date().toISOString().split("T")[0];
   const response = await groq.chat.completions.create({
     model: "llama-3.1-8b-instant",
     messages: [
       {
         role: "system",
         content: `
-You are a smart task extraction assistant.
+You are a task extraction assistant.
 
 Your job:
-Understand messy, natural user input and extract a structured task.
+Convert messy user input into a clean structured task.
 
-Return ONLY valid JSON:
+------------------------------------
+OUTPUT FORMAT (STRICT JSON ONLY)
+------------------------------------
 {
   "title": string,
-  "dateText": string,
-  "subject": string
+  "dateText": string
 }
 
 ------------------------------------
-CORE GOAL
+RULES
 ------------------------------------
-User may type casually, with bad grammar, missing words, or mixed order.
 
-You MUST:
+1. TITLE RULE
+- Extract the actual action/task
+- REMOVE:
+  - dates
+  - filler words
+  - unnecessary context
+
+Examples:
+"programming final next Tuesday" -> "Programming Final"
+"submit networking quiz tomorrow" -> "Submit Networking Quiz"
+
+------------------------------------
+2. DATE RULE
+- Extract natural language date
+Examples:
+tomorrow, next week, friday, in 3 days, may 5
+
+If no date is found:
+→ default "tomorrow"
+
+DO NOT convert to real date.
+
+Only return text.
+
+------------------------------------
+3. BE SMART
+- fix grammar
 - understand intent
-- clean the text
-- extract meaningful structured data
-
-------------------------------------
-TITLE RULE (IMPORTANT)
-------------------------------------
-Title = the actual task/action
-
-REMOVE from title:
-- subject names
-- date phrases
-- filler words
+- ignore noise
 
 Examples:
-"Programming assignment tomorrow" -> "assignment"
-"RPH collage activity in 8 days" -> "collage activity"
-"quiz for networking next week" -> "quiz"
+"i have to submit capstone friday" -> "Capstone Submission", "Friday"
+"network quiz next week pls" -> "Network Quiz", "next week"
 
 ------------------------------------
-SUBJECT RULE (SMART DETECTION)
-------------------------------------
-Valid subjects:
-Programming, Networking, Discrete, UTS, FilDis, RPH, ArtApp, PE, NSTP
-
-You MUST:
-- detect subject even if misspelled
-- detect subject even if abbreviated
-- detect subject even if implied
-
-Examples:
-"prog assignment" -> Programming
-"net quiz" -> Networking
-"filipino essay" -> FilDis
-"pe activity" -> PE
-
-If unsure -> return "Unassigned"
-
-------------------------------------
-DATE RULE (FLEXIBLE)
-------------------------------------
-Extract ANY natural time phrase:
-
-Examples:
-tomorrow, later, tonight, next week, next monday, may 5, in 3 days, this friday
-
-If NO date is mentioned:
--> default to "tomorrow"
-
-DO NOT convert into actual date
-ONLY return the text
-
-------------------------------------
-SMART UNDERSTANDING
-------------------------------------
-You MUST:
-- fix obvious typos
-- understand intent over grammar
-- ignore extra words
-
-Examples:
-"do networking assignment maybe friday"
--> title: "assignment"
--> dateText: "Friday"
--> subject: "Networking"
-
-"i have to submit programming project next week"
--> title: "project"
--> dateText: "next week"
--> subject: "Programming"
-
-------------------------------------
-OUTPUT RULE
-------------------------------------
+4. OUTPUT RULE
 - ONLY JSON
-- NO explanation
 - NO markdown
+- NO explanation
+- NO extra text
 `,
       },
       {
@@ -126,20 +87,18 @@ OUTPUT RULE
   output = output.replace(/```json|```/g, "").trim();
 
   try {
-    const task = JSON.parse(output);
+    const parsed = JSON.parse(output);
 
     return {
-      title: task.title || text,
-      dateText: task.dateText || "tomorrow",
-      subject: task.subject || "Unassigned",
+      title: parsed.title || text,
+      dateText: parsed.dateText || "tomorrow",
     };
   } catch (err) {
-    console.error("JSON parse error:", output);
+    console.error("AI parse error:", output);
 
     return {
       title: text,
-      dueDate: new Date().toISOString().split("T")[0],
-      subject: "Unassigned",
+      dateText: "tomorrow",
     };
   }
 }
@@ -151,106 +110,57 @@ async function parseEditTask(text) {
       {
         role: "system",
         content: `
-You are an intelligent task editor.
+You are a task editing assistant.
 
 Your job:
-Understand how a user wants to MODIFY an existing task.
+Detect how a user wants to modify a task.
 
-Return ONLY the changes.
-
-Return ONLY valid JSON:
+------------------------------------
+OUTPUT FORMAT (STRICT JSON ONLY)
+------------------------------------
 {
-  "title": string or null,
-  "dateText": string or null,
-  "dateShiftDays": number or null
+  "title": string | null,
+  "dateText": string | null,
+  "dateShiftDays": number | null
 }
 
 ------------------------------------
-CORE BEHAVIOR
+RULES
 ------------------------------------
-User input is short, messy, and may not include keywords.
 
-You MUST:
-- infer intent
-- decide what is being changed
-- avoid guessing incorrectly
+1. DATE CHANGES
+If user mentions:
+- due
+- deadline
+- move to
+- reschedule
 
-------------------------------------
-PRIORITY RULE (VERY IMPORTANT)
-------------------------------------
-If a DATE is clearly mentioned -> it MUST be treated as a DATE CHANGE
-
-DATE takes priority over title
-
-------------------------------------
-DATE DETECTION (STRONG)
-------------------------------------
-Detect date changes if user says:
-
-deadline, due, due date, submit, submission, change date, change deadline, move to, reschedule, set to
+→ treat as dateText
 
 Examples:
-"change deadline to May 5" -> { "dateText": "May 5" }
-"due friday" -> { "dateText": "Friday" }
-"move to next week" -> { "dateText": "next week" }
+"move to friday" -> { "dateText": "Friday" }
+"due next week" -> { "dateText": "next week" }
 
 ------------------------------------
-DATE SHIFT (MOVEMENT)
-------------------------------------
-Detect relative movement:
+2. SHIFTING DATES
+Examples:
+"move 2 days later" -> { "dateShiftDays": 2 }
+"move back 1 day" -> { "dateShiftDays": -1 }
 
-move 3 days later, delay 2 days, move back 1 week, earlier by 2 days
+------------------------------------
+3. TITLE CHANGE
+Only if user clearly renames task
 
 Examples:
-"move 3 days later" -> { "dateShiftDays": 3 }
-"move 2 days earlier" -> { "dateShiftDays": -2 }
+"rename to quiz" -> { "title": "Quiz" }
 
 ------------------------------------
-TITLE RULE (SAFE)
-------------------------------------
-Update title ONLY IF:
-- user clearly provides a new task name
-- AND no strong date intent exists
-
-Examples:
-"Final Exam" -> { "title": "Final Exam" }
-"rename to quiz" -> { "title": "quiz" }
-
-BUT:
-"change deadline to May 5" -> NOT a title
+4. NO GUESSING
+If unsure:
+return all nulls
 
 ------------------------------------
-COMBINED CHANGES
-------------------------------------
-User can change BOTH:
-
-"project due friday"
--> {
-  "title": "project",
-  "dateText": "Friday"
-}
-
-------------------------------------
-SMART UNDERSTANDING
-------------------------------------
-You MUST:
-- fix typos
-- understand short phrases
-- infer intent
-
-Examples:
-"make it quiz instead" -> title = "quiz"
-"friday nalang" -> dateText = "Friday"
-
-------------------------------------
-NO CHANGE CASE
-------------------------------------
-If NOTHING valid is found:
--> return all fields as null
-
-------------------------------------
-OUTPUT RULE
-------------------------------------
+5. OUTPUT RULE
 - ONLY JSON
 - NO explanation
 - NO markdown
@@ -265,12 +175,21 @@ OUTPUT RULE
   });
 
   let output = response.choices?.[0]?.message?.content;
+
+  if (!output) {
+    return {
+      title: null,
+      dateText: null,
+      dateShiftDays: null,
+    };
+  }
+
   output = output.replace(/```json|```/g, "").trim();
 
   try {
     return JSON.parse(output);
   } catch (err) {
-    console.error("Edit JSON parse error:", output);
+    console.error("Edit AI parse error:", output);
 
     return {
       title: null,
@@ -280,4 +199,7 @@ OUTPUT RULE
   }
 }
 
-module.exports = { parseTask, parseEditTask };
+module.exports = {
+  parseTask,
+  parseEditTask,
+};

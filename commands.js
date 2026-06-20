@@ -1,171 +1,124 @@
 const { parseTask, parseEditTask } = require("./ai");
 const { resolveDate, formatDate } = require("./utils");
 
-// Add Task
-async function addTask(message, input, getNextTaskId, db) {
-  const task = await parseTask(input);
-
-  const realDate = resolveDate(task.dateText);
-  const dueDate = formatDate(realDate);
-
-  if (!task.title) {
-    return message.reply("Couldn't understand the task");
-  }
-
-  const taskId = await getNextTaskId(db, task.subject, message.author.id);
-  await db.collection("tasks").insertOne({
-    userId: message.author.id,
-    taskId,
-    title: task.title,
-    subject: task.subject || "Unassigned",
-    dueDate: dueDate,
-    createdAt: new Date(),
-    lastNotifiedAt: null,
-  });
-
-  return message.reply(
-    `🧠 **Task Saved!**
-  📌 Title: ${task.title}
-  📅 Due: ${dueDate} (${task.dateText})
-  🆔 Task ID: ${taskId}`,
-  );
+async function isUserActivated(db, userId) {
+  const user = await db.collection("users").findOne({ userId });
+  return user?.activated === true;
 }
 
-// Show Task
-async function showTask(message, db) {
+async function getNextTaskId(db, userId) {
+  const counters = db.collection("counters");
+
+  const res = await counters.findOneAndUpdate(
+    { userId },
+    { $inc: { count: 1 } },
+    { upsert: true, returnDocument: "after" },
+  );
+
+  const count = res.value?.count || 1;
+  return `TSK${String(count).padStart(3, "0")}`;
+}
+
+async function showTask(message, db, ctx) {
   const tasks = await db
     .collection("tasks")
-    .find({ userId: message.author.id })
+    .find({ userId: ctx.userId })
     .sort({ dueDate: 1 })
     .toArray();
 
-  if (!tasks.length) {
-    return message.reply("📭 You have no tasks.");
-  }
+  if (!tasks.length) return message.reply("📭 No tasks.");
 
-  let output = "📋 **Your Tasks:**\n\n";
-
-  const grouped = {};
+  let out = "📋 Tasks\n\n";
 
   for (const t of tasks) {
-    if (!grouped[t.subject]) {
-      grouped[t.subject] = [];
-    }
-    grouped[t.subject].push(t);
+    out += `\`${t.taskId}\` | ${t.title} | ${t.dueDate}\n`;
   }
 
-  const sortedSubjects = Object.keys(grouped).sort();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  for (const subject of sortedSubjects) {
-    output += `📚 **${subject}**\n`;
-
-    for (const t of grouped[subject] || []) {
-      const due = new Date(t.dueDate);
-      due.setHours(0, 0, 0, 0);
-
-      const msPerDay = 1000 * 60 * 60 * 24;
-      const diffDays = Math.round((due - today) / msPerDay);
-
-      const daysLeft =
-        diffDays > 0
-          ? `${diffDays} Days Left`
-          : diffDays === 0
-            ? "Due Today"
-            : `${Math.abs(diffDays)} Days Overdue`;
-
-      output += `${t.taskId} | ${t.title} | ${t.dueDate} | ${daysLeft}\n`;
-    }
-
-    output += `\n`;
-  }
-
-  return message.reply(output);
+  return message.reply(out);
 }
 
-// Done/Remove Task
-async function doneTask(message, taskId, db) {
+async function doneTask(message, taskId, db, ctx) {
+  if (!taskId) return message.reply("❌ Missing ID");
+
   const id = taskId.toUpperCase();
 
   const task = await db.collection("tasks").findOne({
-    userId: message.author.id,
+    userId: ctx.userId,
     taskId: id,
   });
 
-  if (!task) {
-    return message.reply("Task not found.");
-  }
+  if (!task) return message.reply("❌ Not found");
 
   await db.collection("tasks").deleteOne({
-    userId: message.author.id,
+    userId: ctx.userId,
     taskId: id,
   });
 
-  return message.reply(
-    `✅ Task ${task.title} | ${task.taskId} Marked as Done and Removed.`,
-  );
+  return message.reply(`✅ Done: ${task.title}`);
 }
 
-// Edit Task
-async function editTask(message, taskId, input, db) {
-  const id = taskId?.trim().toUpperCase();
+async function editTask(message, taskId, input, db, ctx) {
+  const id = taskId.toUpperCase();
 
-  if (!id || !input) {
-    return message.reply("Usage: !edit <taskId> <changes>");
-  }
-
-  const filter = {
-    userId: message.author.id,
+  const task = await db.collection("tasks").findOne({
+    userId: ctx.userId,
     taskId: id,
-  };
-
-  const task = await db.collection("tasks").findOne(filter);
-
-  if (!task) {
-    return message.reply("❌ Task not found.");
-  }
-
-  let update;
-
-  try {
-    update = await parseEditTask(input);
-  } catch (err) {
-    console.log("AI parse error:", err);
-    return message.reply("❌ Could not understand edit request.");
-  }
-
-  const setData = {};
-
-  if (typeof update?.title === "string") {
-    setData.title = update.title;
-  }
-
-  if (typeof update?.dateText === "string") {
-    const realDate = resolveDate(update.dateText);
-    setData.dueDate = formatDate(realDate);
-  } else if (typeof update?.dateShiftDays === "number") {
-    const currentDate = new Date(task.dueDate || Date.now());
-    currentDate.setDate(currentDate.getDate() + update.dateShiftDays);
-    setData.dueDate = formatDate(currentDate);
-  }
-
-  if (Object.keys(setData).length === 0) {
-    return message.reply("⚠️ No valid changes detected.");
-  }
-
-  await db.collection("tasks").updateOne(filter, {
-    $set: setData,
   });
 
-  const updatedTask = await db.collection("tasks").findOne(filter);
+  if (!task) return message.reply("❌ Not found");
 
-  if (!updatedTask) {
-    return message.reply("❌ Task updated but could not be reloaded.");
+  const update = await parseEditTask(input);
+
+  const set = {};
+
+  if (update?.title) set.title = update.title;
+
+  if (update?.dateText) {
+    set.dueDate = formatDate(resolveDate(update.dateText));
   }
 
+  if (update?.dateShiftDays) {
+    const d = new Date(task.dueDate);
+    d.setDate(d.getDate() + update.dateShiftDays);
+    set.dueDate = formatDate(d);
+  }
+
+  if (!Object.keys(set).length) {
+    return message.reply("⚠️ No changes");
+  }
+
+  await db
+    .collection("tasks")
+    .updateOne({ userId: ctx.userId, taskId: id }, { $set: set });
+
+  return message.reply(`✏️ Updated ${id}`);
+}
+
+async function handleNaturalInput(message, input, db, ctx) {
+  const task = await parseTask(input);
+
+  if (!task?.title) return message.reply("❌ Couldn't understand");
+
+  const due = formatDate(resolveDate(task.dateText));
+  const taskId = await getNextTaskId(db, ctx.userId);
+
+  await db.collection("tasks").insertOne({
+    userId: ctx.userId,
+    taskId,
+    title: task.title,
+    dueDate: due,
+    createdAt: new Date(),
+  });
+
   return message.reply(
-    `✏️ Updated Task\n📌 ${updatedTask.taskId} | ${updatedTask.title} | ${updatedTask.dueDate}`,
+    `🧠 Task Created\n📌 ${task.title}\n📅 ${due}\n🆔 ${taskId}`,
   );
 }
 
-module.exports = { addTask, showTask, doneTask, editTask };
+module.exports = {
+  showTask,
+  doneTask,
+  editTask,
+  handleNaturalInput,
+  isUserActivated,
+};

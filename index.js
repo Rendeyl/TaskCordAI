@@ -1,135 +1,114 @@
 const discord = require("discord.js");
 const express = require("express");
-const app = express();
 require("dotenv").config();
 
 const connectDB = require("./db");
-const { addTask, showTask, doneTask, editTask } = require("./commands");
-const { getNextTaskId } = require("./utils");
-const { runNotifier } = require("./notifier");
 
-const PORT = Number(process.env.PORT) || 3000;
+const {
+  showTask,
+  doneTask,
+  editTask,
+  handleNaturalInput,
+  isUserActivated,
+} = require("./commands");
+
+const PORT = process.env.PORT || 3000;
 
 const client = new discord.Client({
   intents: [
     discord.GatewayIntentBits.Guilds,
     discord.GatewayIntentBits.GuildMessages,
+    discord.GatewayIntentBits.DirectMessages,
     discord.GatewayIntentBits.MessageContent,
+  ],
+  partials: [
+    discord.Partials.Channel,
+    discord.Partials.Message,
+    discord.Partials.User,
   ],
 });
 
-const MIN = 2 * 60 * 60 * 1000; // 2 hours
-const MAX = 5 * 60 * 60 * 1000; // 5 hours
-
-function scheduleNotifier() {
-  const delay = Math.floor(Math.random() * (MAX - MIN + 1)) + MIN;
-
-  setTimeout(async () => {
-    try {
-      await runNotifier(db, client);
-    } catch (err) {
-      console.error("Notifier error:", err);
-    }
-
-    scheduleNotifier();
-  }, delay);
-}
-
-app.get("/", (req, res) => {
-  res.send("TaskCordAI is running");
-});
-
-app.listen(PORT, () => {
-  console.log(`Web server running on port ${PORT}`);
-});
+const app = express();
+app.get("/", (req, res) => res.send("TaskCordAI running"));
+app.listen(PORT, () => console.log(`Server running on ${PORT}`));
 
 let db;
 
 client.once("ready", async () => {
   db = await connectDB();
-
-  scheduleNotifier();
-
-  console.log(`Logged in as user ${client.user.tag}`);
+  console.log(`🤖 Logged in as ${client.user.tag}`);
 });
+
+function getContext(message) {
+  return {
+    isDM: message.channel.isDMBased(),
+    userId: message.author.id,
+    guildId: message.guild?.id ?? null,
+  };
+}
 
 client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
+  if (!message || message.author.bot) return;
+  if (!message.content) return;
 
-  if (message.content === "!status") {
-    message.reply("In-Developing/Updating");
-    //message.reply("RUNNING!!!");
-  }
+  const content = message.content.trim();
+  const ctx = getContext(message);
 
-  //!task
-  if (message.content.startsWith("!task")) {
-    const input = message.content.replace("!task", "").trim();
+  console.log("📩", {
+    content,
+    userId: ctx.userId,
+    isDM: ctx.isDM,
+    guild: ctx.guildId,
+  });
 
-    if (!input) {
-      return message.reply("Please Enter a Task");
+  try {
+    if (!ctx.isDM && content === "!start") {
+      await db
+        .collection("users")
+        .updateOne(
+          { userId: ctx.userId },
+          { $set: { activated: true } },
+          { upsert: true },
+        );
+
+      const user = await client.users.fetch(ctx.userId);
+
+      await user.send(
+        "👋 Welcome to TaskCordAI!\n\nYou can now use commands in DM.",
+      );
+
+      return message.reply("✅ Activated! Check your DMs.");
     }
 
-    try {
-      await addTask(message, input, getNextTaskId, db);
-    } catch (err) {
-      console.log(err);
-      message.reply(`Something Went Wrong Adding a Task...`);
-    }
-  }
-
-  //!showtask
-  if (message.content === "!showtask") {
-    try {
-      await showTask(message, db);
-    } catch (err) {
-      console.log(err);
-      return message.reply("Something Went Wrong Showing all Tasks...");
-    }
-  }
-
-  //!done
-  if (message.content.startsWith("!done")) {
-    const taskId = message.content.split(" ")[1];
-
-    if (!taskId) return message.reply("Provide a task ID.");
-
-    return doneTask(message, taskId, db);
-  }
-
-  //!edit
-  if (message.content.startsWith("!edit")) {
-    const [, taskId, ...rest] = message.content.split(" ");
-    const input = rest.join(" ");
-
-    if (!taskId || !input) {
-      return message.reply("Usage: !edit <taskId> <changes>");
+    if (!ctx.isDM) {
+      return message.reply("❌ Only !start is allowed in server.");
     }
 
-    return editTask(message, taskId, input, db);
-  }
+    const active = await isUserActivated(db, ctx.userId);
 
-  // Changing Channel
-  if (message.content.startsWith("!setnotify")) {
-    const channel = message.mentions.channels.first();
-
-    if (!channel) {
-      return message.reply("Please mention a channel like #channel-name");
+    if (!active) {
+      return message.reply("❌ Please use !start in a server first.");
     }
 
-    console.log("Saving user:", message.author.id);
-    console.log("Channel:", channel.id);
+    if (content === "!showtask") {
+      return await showTask(message, db, ctx);
+    }
 
-    await db.collection("users").updateOne(
-      { userId: message.author.id },
-      {
-        $set: {
-          notifyChannelId: channel.id,
-        },
-      },
-      { upsert: true },
-    );
+    if (content.startsWith("!done")) {
+      const taskId = content.split(" ")[1];
+      return await doneTask(message, taskId, db, ctx);
+    }
 
-    return message.reply(`✅ Notification channel set to ${channel.name}`);
+    if (content.startsWith("!edit")) {
+      const [, taskId, ...rest] = content.split(" ");
+      return await editTask(message, taskId, rest.join(" "), db, ctx);
+    }
+
+    return await handleNaturalInput(message, content, db, ctx);
+  } catch (err) {
+    console.error("❌ ERROR:", err);
+    return message.reply("Something went wrong.");
   }
 });
+
 client.login(process.env.BOT_TOKEN);
