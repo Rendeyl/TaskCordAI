@@ -19,10 +19,11 @@ async function getNextTaskId(db, userId) {
   return `TSK${String(count).padStart(3, "0")}`;
 }
 
+// Show Task COmmand
 async function showTask(message, db, ctx) {
   const tasks = await db
     .collection("tasks")
-    .find({ userId: ctx.userId })
+    .find({ userId: ctx.userId, completed: { $ne: true } })
     .sort({ dueDate: 1 })
     .toArray();
 
@@ -37,6 +38,7 @@ async function showTask(message, db, ctx) {
   return message.reply(out);
 }
 
+// Done Task Command (Will Remove Soon)
 async function doneTask(message, taskId, db, ctx) {
   if (!taskId) return message.reply("❌ Missing ID");
 
@@ -49,14 +51,20 @@ async function doneTask(message, taskId, db, ctx) {
 
   if (!task) return message.reply("❌ Not found");
 
-  await db.collection("tasks").deleteOne({
-    userId: ctx.userId,
-    taskId: id,
-  });
+  await db.collection("tasks").updateOne(
+    { userId: ctx.userId, taskId: id },
+    {
+      $set: {
+        completed: true,
+        completedAt: new Date(),
+      },
+    },
+  );
 
-  return message.reply(`✅ Done: ${task.title}`);
+  return message.reply(`✅ Completed: ${task.title}`);
 }
 
+// Edit Task Command (Will Remove Soon)
 async function editTask(message, taskId, input, db, ctx) {
   const id = taskId.toUpperCase();
 
@@ -71,7 +79,9 @@ async function editTask(message, taskId, input, db, ctx) {
 
   const set = {};
 
-  if (update?.title) set.title = update.title;
+  if (update?.title) {
+    set.title = update.title;
+  }
 
   if (update?.dateText) {
     set.dueDate = formatDate(resolveDate(update.dateText));
@@ -94,6 +104,7 @@ async function editTask(message, taskId, input, db, ctx) {
   return message.reply(`✏️ Updated ${id}`);
 }
 
+// Natural Language
 async function handleNaturalInput(message, input, db, ctx) {
   const task = await parseTask(input);
 
@@ -107,6 +118,12 @@ async function handleNaturalInput(message, input, db, ctx) {
     taskId,
     title: task.title,
     dueDate: due,
+
+    // New Fields
+    completed: false,
+    urgentReminderSent: false,
+    dueTodayReminderSent: false,
+
     createdAt: new Date(),
   });
 
