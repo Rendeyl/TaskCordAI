@@ -63,7 +63,7 @@ async function showTask(message, db, ctx) {
 
   if (!tasks.length) return message.reply("📭 No tasks.");
 
-  let out = "📋 Tasks\n\n";
+  let out = "Active Tasks\n\n";
 
   for (const t of tasks) {
     out += `\`${t.taskId}\` | ${t.title} | ${t.dueDate}\n`;
@@ -104,12 +104,12 @@ async function editTaskByDoc(message, task, intent, db, ctx) {
   }
 
   if (!Object.keys(set).length) {
-    return message.reply("⚠️ No changes detected.");
+    return message.reply("No changes detected.");
   }
 
   await db.collection("tasks").updateOne({ _id: task._id }, { $set: set });
 
-  return message.reply(`✏️ Updated: ${task.title}`);
+  return message.reply(`Updated: ${task.title}`);
 }
 
 // New Handler
@@ -135,7 +135,7 @@ async function handleNaturalInput(message, input, db, ctx) {
     });
 
     return message.reply(
-      `🧠 Task Created\n📌 ${task.title}\n📅 ${due}\n🆔 ${taskId}`,
+      `Task Created\nName: ${task.title}\nDue: ${due}\nID: ${taskId}`,
     );
   }
 
@@ -148,7 +148,7 @@ async function handleNaturalInput(message, input, db, ctx) {
   const task = findBestTask(tasks, intent.taskQuery);
 
   if (!task) {
-    return message.reply("❌ Couldn't find matching task.");
+    return message.reply("Couldn't find matching task.");
   }
 
   // DONE
@@ -161,7 +161,7 @@ async function handleNaturalInput(message, input, db, ctx) {
     return editTaskByDoc(message, task, intent, db, ctx);
   }
 
-  return message.reply("❌ I didn't understand that command.");
+  return message.reply("I didn't understand that command.");
 }
 
 module.exports = {

@@ -104,7 +104,7 @@ client.on("messageCreate", async (message) => {
 
     if (content === "!digest") {
       await sendManualDigest(db, client, ctx.userId);
-      return message.reply("📬 Sent digest.");
+      return message.reply("Sent digest.");
     }
 
     // Natural Language Input (Intent-Based)
