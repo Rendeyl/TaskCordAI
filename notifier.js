@@ -274,7 +274,7 @@ async function sendManualDigest(db, client, userId) {
     else upcoming.push(task);
   }
 
-  let msg = "📋 MANUAL DAILY DIGEST\n\n";
+  let msg = "MANUAL DAILY DIGEST\n\n";
 
   if (overdue.length) {
     msg += "🔴 OVERDUE\n";

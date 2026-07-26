@@ -61,7 +61,7 @@ async function showTask(message, db, ctx) {
     .sort({ dueDate: 1 })
     .toArray();
 
-  if (!tasks.length) return message.reply("📭 No tasks.");
+  if (!tasks.length) return message.reply("No tasks.");
 
   let out = "Active Tasks\n\n";
 
