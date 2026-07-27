@@ -100,7 +100,7 @@ async function sendDailyDigest(db, client, userDoc) {
     }
   }
 
-  let msg = "Good Morning!\n\n";
+  let msg = "==========\nGood Morning!\n\n";
 
   msg += `You have ${tasks.length} active task(s).\n\n`;
 
@@ -197,7 +197,7 @@ async function sendUrgentReminders(db, client, userDoc) {
     if (daysLeft === 0 && task.dueTodayReminderSent !== true) {
       try {
         await user.send(
-          `Due Today\n\n${task.title}\n📅 ${task.dueDate}\n\nDon't forget to submit it today.`,
+          `==========\nDue Today\n\n${task.title}\nDue: ${task.dueDate}\n\nDon't forget to submit it today.`,
         );
 
         await db.collection("tasks").updateOne(
