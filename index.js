@@ -94,6 +94,10 @@ client.on("messageCreate", async (message) => {
 
     const active = await isUserActivated(db, ctx.userId);
 
+    if (content === "!latestcommit") {
+      return message.reply("Commit Number: 33");
+    }
+
     if (!active) {
       return message.reply("Please use !start in a server first.");
     }
