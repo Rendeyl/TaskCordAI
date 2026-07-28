@@ -105,7 +105,7 @@ async function sendDailyDigest(db, client, userDoc) {
   msg += `You have ${tasks.length} active task(s).\n\n`;
 
   if (overdue.length) {
-    msg += "OVERDUE\n";
+    msg += "=== OVERDUE ===\n";
 
     for (const task of overdue) {
       msg += `• ${task.title}\n`;
@@ -116,7 +116,7 @@ async function sendDailyDigest(db, client, userDoc) {
   }
 
   if (dueSoon.length) {
-    msg += "DUE SOON\n";
+    msg += "=== DUE SOON ===\n";
 
     for (const task of dueSoon) {
       msg += `• ${task.title}\n`;
@@ -127,7 +127,7 @@ async function sendDailyDigest(db, client, userDoc) {
   }
 
   if (upcoming.length) {
-    msg += "UPCOMING\n";
+    msg += "=== UPCOMIN ===\n";
 
     for (const task of upcoming) {
       msg += `• ${task.title}\n`;
@@ -197,7 +197,7 @@ async function sendUrgentReminders(db, client, userDoc) {
     if (daysLeft === 0 && task.dueTodayReminderSent !== true) {
       try {
         await user.send(
-          `==========\nDue Today\n\n${task.title}\nDue: ${task.dueDate}\n\nDon't forget to submit it today.`,
+          `===== Due Today =====\n\n${task.title}\nDue: ${task.dueDate}\n\nDon't forget to do it today.`,
         );
 
         await db.collection("tasks").updateOne(
