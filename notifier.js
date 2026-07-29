@@ -100,7 +100,7 @@ async function sendDailyDigest(db, client, userDoc) {
     }
   }
 
-  let msg = "==========\nGood Morning!\n\n";
+  let msg = "====================\nGood Morning!\n\n";
 
   msg += `You have ${tasks.length} active task(s).\n\n`;
 
