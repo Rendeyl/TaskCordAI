@@ -14,10 +14,14 @@ async function getNextTaskId(db, userId) {
   const res = await counters.findOneAndUpdate(
     { userId },
     { $inc: { count: 1 } },
-    { upsert: true, returnDocument: "after" },
+    {
+      upsert: true,
+      returnDocument: "after",
+    },
   );
 
-  const count = res.value?.count || 1;
+  const count = res.count || 1;
+
   return `TSK${String(count).padStart(3, "0")}`;
 }
 

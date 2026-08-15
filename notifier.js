@@ -108,8 +108,9 @@ async function sendDailyDigest(db, client, userDoc) {
     msg += "=== OVERDUE ===\n";
 
     for (const task of overdue) {
-      msg += `• ${task.title}\n`;
+      msg += `• **${task.title}**\n`;
       msg += `  Due: ${task.dueDate}\n`;
+      msg += `-------------------------\n`;
     }
 
     msg += "\n";
@@ -119,8 +120,9 @@ async function sendDailyDigest(db, client, userDoc) {
     msg += "=== DUE SOON ===\n";
 
     for (const task of dueSoon) {
-      msg += `• ${task.title}\n`;
+      msg += `• **${task.title}**\n`;
       msg += `  Due: ${task.dueDate}\n`;
+      msg += `-------------------------\n`;
     }
 
     msg += "\n";
@@ -130,14 +132,16 @@ async function sendDailyDigest(db, client, userDoc) {
     msg += "=== UPCOMIN ===\n";
 
     for (const task of upcoming) {
-      msg += `• ${task.title}\n`;
+      msg += `• **${task.title}**\n`;
       msg += `  Due: ${task.dueDate}\n`;
+      msg += `-------------------------\n`;
     }
 
     msg += "\n";
   }
 
-  msg += "Have a productive day!";
+  msg += `Have a productive day!\n`;
+  msg += `====================`;
 
   const user = await client.users.fetch(userDoc.userId);
 
@@ -176,7 +180,9 @@ async function sendUrgentReminders(db, client, userDoc) {
     // Due tomorrow
     if (daysLeft === 1 && task.urgentReminderSent !== true) {
       try {
-        await user.send(`Due Tomorrow\n\n${task.title}\n📅 ${task.dueDate}`);
+        await user.send(
+          `-- **Due Tomorrow!** --\n${task.title}\n📅 ${task.dueDate}`,
+        );
 
         await db.collection("tasks").updateOne(
           { _id: task._id },
