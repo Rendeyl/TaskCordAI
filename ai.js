@@ -1,4 +1,5 @@
 const Groq = require("groq-sdk");
+const MODEL = "openai/gpt-oss-20b";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -7,7 +8,7 @@ const groq = new Groq({
 // Create Task
 async function parseTask(text) {
   const response = await groq.chat.completions.create({
-    model: "openai/gpt-oss-20b",
+    model: MODEL,
     messages: [
       {
         role: "system",
@@ -46,7 +47,7 @@ ONLY JSON
 // Edit Task
 async function parseEditTask(text) {
   const response = await groq.chat.completions.create({
-    model: "openai/gpt-oss-20b",
+    model: MODEL,
     messages: [
       {
         role: "system",
@@ -84,7 +85,7 @@ ONLY JSON
 // Intent-Handler
 async function parseTaskAction(text) {
   const response = await groq.chat.completions.create({
-    model: "openai/gpt-oss-20b",
+    model: MODEL,
     messages: [
       {
         role: "system",
