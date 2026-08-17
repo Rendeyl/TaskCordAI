@@ -46,7 +46,7 @@ ONLY JSON
 // Edit Task
 async function parseEditTask(text) {
   const response = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
+    model: "openai/gpt-oss-20b",
     messages: [
       {
         role: "system",
@@ -84,7 +84,7 @@ ONLY JSON
 // Intent-Handler
 async function parseTaskAction(text) {
   const response = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
+    model: "openai/gpt-oss-20b",
     messages: [
       {
         role: "system",
