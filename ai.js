@@ -11,17 +11,17 @@ const groq = new Groq({
 const PROMPTS_DIR = path.join(__dirname, "prompts");
 
 const taskCreatePrompt = fs.readFileSync(
-  path.join(PROMPTS_DIR, "create.txt"),
+  path.join(__dirname, "create.txt"),
   "utf8",
 );
 
 const taskActionPrompt = fs.readFileSync(
-  path.join(PROMPTS_DIR, "action.txt"),
+  path.join(__dirname, "action.txt"),
   "utf8",
 );
 
 const taskEditPrompt = fs.readFileSync(
-  path.join(PROMPTS_DIR, "edit.txt"),
+  path.join(__dirname, "edit.txt"),
   "utf8",
 );
 
