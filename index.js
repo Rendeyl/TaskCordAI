@@ -95,7 +95,7 @@ client.on("messageCreate", async (message) => {
     const active = await isUserActivated(db, ctx.userId);
 
     if (content === "!latestcommit") {
-      return message.reply("Commit Number: 38");
+      return message.reply("Commit Number: 42");
     }
 
     if (!active) {
