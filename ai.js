@@ -1,9 +1,29 @@
+const fs = require("fs");
+const path = require("path");
+
 const Groq = require("groq-sdk");
 const MODEL = "openai/gpt-oss-20b";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
+
+const PROMPTS_DIR = path.join(__dirname, "prompts");
+
+const taskCreatePrompt = fs.readFileSync(
+  path.join(PROMPTS_DIR, "create.txt"),
+  "utf8",
+);
+
+const taskActionPrompt = fs.readFileSync(
+  path.join(PROMPTS_DIR, "action.txt"),
+  "utf8",
+);
+
+const taskEditPrompt = fs.readFileSync(
+  path.join(PROMPTS_DIR, "edit.txt"),
+  "utf8",
+);
 
 // Create Task
 async function parseTask(text) {
@@ -12,20 +32,7 @@ async function parseTask(text) {
     messages: [
       {
         role: "system",
-        content: `
-Convert user input into JSON:
-
-{
-  "title": string,
-  "dateText": string
-}
-
-Rules:
-- title = clean task name
-- dateText = natural language date
-- default: tomorrow
-ONLY JSON
-        `,
+        content: taskCreatePrompt,
       },
       { role: "user", content: text },
     ],
@@ -51,19 +58,7 @@ async function parseEditTask(text) {
     messages: [
       {
         role: "system",
-        content: `
-Return JSON:
-{
-  "title": string|null,
-  "dateText": string|null,
-  "dateShiftDays": number|null
-}
-
-Rules:
-- detect rename, reschedule, shift
-- else nulls only
-ONLY JSON
-        `,
+        content: taskEditPrompt,
       },
       { role: "user", content: text },
     ],
@@ -89,42 +84,7 @@ async function parseTaskAction(text) {
     messages: [
       {
         role: "system",
-        content: `
-You are a task command classifier.
-
-Return ONLY JSON:
-
-{
-  "action": "create | done | edit | unknown",
-  "taskQuery": string,
-  "title": string|null,
-  "dateText": string|null,
-  "dateShiftDays": number|null
-}
-
-RULES:
-
-1. done:
-- "I finished X"
-- "mark X as done"
-- "completed X"
-
-2. edit:
-- "move X to friday"
-- "change X to ..."
-- "update X"
-
-3. create:
-- new tasks only
-
-4. taskQuery:
-- extract the task being referred to
-
-5. unknown:
-- if unclear
-
-ONLY JSON
-        `,
+        content: taskActionPrompt,
       },
       { role: "user", content: text },
     ],

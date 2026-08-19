@@ -121,7 +121,7 @@ async function handleNaturalInput(message, input, db, ctx) {
   const intent = await parseTaskAction(input);
 
   // fallback: CREATE
-  if (intent.action === "create" || intent.action === "unknown") {
+  if (intent.action === "create") {
     const task = await parseTask(input);
 
     const due = formatDate(resolveDate(task.dateText));
